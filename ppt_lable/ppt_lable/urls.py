@@ -17,11 +17,12 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from myapp.views import create_folder_view, catalog_list_view, delete_catalog_view, create_subitem_view
+from myapp.views import create_folder_view, catalog_list_view, delete_catalog_view, create_subitem_view, edit_catalog_view
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('create_folder/', create_folder_view, name='create_folder'),
     path('catalog_list/', catalog_list_view, name='catalog_list'),
     path('delete_catalog/<uuid:catalog_id>/', delete_catalog_view, name='delete_catalog'),
     path('create_subitem/', create_subitem_view, name='create_subitem'),
+    path('edit_catalog/<uuid:catalog_id>/', edit_catalog_view, name='edit_catalog'),
 ]

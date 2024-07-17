@@ -73,3 +73,27 @@ def create_subitem_view(request):
         )
         return redirect('catalog_list')
     return redirect('catalog_list')
+
+def edit_catalog_view(request, catalog_id):
+    catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
+    if request.method == 'POST':
+        form = CatalogForm(request.POST, catalog_id=catalog_id, parent_id=catalog.parent_id)
+        if form.is_valid():
+            new_label = form.cleaned_data['catalog']
+            old_path = catalog.path
+            new_path = os.path.join(os.path.dirname(old_path), new_label)
+            catalog.label = new_label
+            catalog.path = new_path
+            catalog.save()
+
+            # 如果是父文件夹，更新所有子文件夹的路径
+            children = catalog.children.all()
+            for child in children:
+                child.path = os.path.join(new_path, child.label)
+                child.save()
+
+            return redirect('catalog_list')
+    else:
+        form = CatalogForm(initial={'catalog': catalog.label}, catalog_id=catalog_id, parent_id=catalog.parent_id)
+
+    return render(request, 'edit_catalog.html', {'form': form, 'catalog': catalog})
