@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Catalog List</title>
+    <script>
+        function openSubitemModal(parentId) {
+            document.getElementById('parent_id').value = parentId;
+            document.getElementById('subitemModal').style.display = 'block';
+        }
+
+        function closeSubitemModal() {
+            document.getElementById('subitemModal').style.display = 'none';
+        }
+
+        function toggleChildren(id) {
+            var element = document.getElementById('children-' + id);
+            if (element.style.display === 'none') {
+                element.style.display = 'table-row-group';
+            } else {
+                element.style.display = 'none';
+            }
+        }
+    </script>
+    <style>
+        #subitemModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid #ccc;
+            padding: 20px;
+            background: #fff;
+            z-index: 1000;
+        }
+        #subitemModalOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <h1>Catalog List</h1>
+    <a href="{% url 'create_folder' %}">创建新文件夹</a>
+    <table border="1">
+        <tr>
+            <th>Label</th>
+            <th>Path</th>
+            <th>Actions</th>
+        </tr>
+        {% for catalog in catalogs %}
+            {% include 'catalog_row.html' with catalog=catalog %}
+        {% endfor %}
+    </table>
+
+    <div id="subitemModalOverlay" onclick="closeSubitemModal()"></div>
+    <div id="subitemModal">
+        <h2>创建子项</h2>
+        <form method="POST" action="{% url 'create_subitem' %}">
+            {% csrf_token %}
+            <input type="hidden" id="parent_id" name="parent_id">
+            <label for="subitem_name">子项名称:</label>
+            <input type="text" id="subitem_name" name="subitem_name" required>
+            <button type="submit">创建</button>
+            <button type="button" onclick="closeSubitemModal()">取消</button>
+        </form>
+    </div>
+</body>
+</html>

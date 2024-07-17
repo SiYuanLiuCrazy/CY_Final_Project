@@ -1,0 +1,20 @@
+<tr>
+    <td>
+        {% if catalog.children.count > 0 %}
+            <a href="#" onclick="toggleChildren('{{ catalog.id }}')">[+]</a>
+        {% endif %}
+        {{ catalog.label }}
+    </td>
+    <td>{{ catalog.path }}</td>
+    <td>
+        <a href="{% url 'delete_catalog' catalog.id %}">删除</a>
+        <a href="#" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
+    </td>
+</tr>
+{% if catalog.children.count > 0 %}
+    <tbody id="children-{{ catalog.id }}" style="display:none;">
+        {% for child in catalog.children.all %}
+            {% include 'catalog_row.html' with catalog=child %}
+        {% endfor %}
+    </tbody>
+{% endif %}
