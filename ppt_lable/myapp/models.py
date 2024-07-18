@@ -28,6 +28,7 @@ class TyPptCatalog(models.Model):
 class TyPptMain(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=64, default='')
+    lable = models.CharField(max_length=64, default='')
     catalog = models.UUIDField(null=True, blank=True)
     name = models.CharField(max_length=1024, default='')
     type = models.CharField(max_length=64, default='')

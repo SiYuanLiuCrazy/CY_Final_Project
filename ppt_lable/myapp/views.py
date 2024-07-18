@@ -207,14 +207,13 @@ def move_catalog_view(request):
     else:
         return redirect('catalog_list')
     
-def ppt_list_view(request):
-    catalogs = TyPptCatalog.objects.all()
-    return render(request, 'ppt_list.html', {'catalogs': catalogs})
+
 
 def import_ppt_view(request):
     if request.method == 'POST':
         ppt_file = request.FILES['ppt_file']
         title = request.POST['title']
+        lable = request.POST['lable']
         target_folder_id = request.POST['target_folder']
 
         target_folder = TyPptCatalog.objects.get(id=target_folder_id)
@@ -227,6 +226,7 @@ def import_ppt_view(request):
         ppt_main = TyPptMain.objects.create(
             id=uuid.uuid4(),
             title=title,
+            lable=lable,
             catalog=target_folder.id,
             name=ppt_file.name,
             type=ppt_file.name.split('.')[-1],
@@ -237,3 +237,28 @@ def import_ppt_view(request):
         return redirect('ppt_list')
     return redirect('ppt_list')
 
+def get_catalog_tree(catalogs, parent=None, level=0):
+    tree = []
+    for catalog in catalogs:
+        if catalog.parent_id == parent:
+            indent = '&nbsp;' * level * 4  # 生成缩进字符串
+            tree.append((catalog, indent))
+            tree.extend(get_catalog_tree(catalogs, catalog.id, level + 1))
+    return tree
+
+def ppt_list_view(request):
+    catalogs = TyPptCatalog.objects.all()
+    catalog_tree = get_catalog_tree(catalogs)
+    return render(request, 'ppt_list.html', {'catalog_tree': catalog_tree})
+
+def catalog_detail_view(request, catalog_id):
+    catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
+    ppts = TyPptMain.objects.filter(catalog=catalog_id)
+    catalogs = TyPptCatalog.objects.all()
+    catalog_tree = get_catalog_tree(catalogs)
+    return render(request, 'ppt_list.html', {
+        'catalogs': catalogs,
+        'catalog_tree': catalog_tree,
+        'ppts': ppts,
+        'selected_catalog': catalog
+    })
