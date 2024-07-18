@@ -167,7 +167,7 @@ def move_catalog_view(request):
         catalog.path = new_path
         catalog.save()
 
-        # 更新子文件夹的路径信息
+        # 更新子文件夹和PPT文件的路径信息
         def update_children_paths(parent_catalog, new_parent_path):
             children = parent_catalog.children.all()
             for child in children:
@@ -180,9 +180,28 @@ def move_catalog_view(request):
                     child.save()
                     update_children_paths(child, new_child_path)
                 except OSError as e:
-                    return HttpResponse(f'Error renaming child folder {child.label}: {e}', status=500)
+                    return HttpResponse(f'Error moving child folder {child.label}: {e}', status=500)
 
         update_children_paths(catalog, new_path)
+
+        # 更新该文件夹及其子文件夹下所有PPT文件的路径信息
+        def update_ppt_paths(catalog, new_path):
+            ppts = TyPptMain.objects.filter(catalog=catalog.id)
+            for ppt in ppts:
+                old_ppt_path = ppt.path
+                new_ppt_path = os.path.join(new_path, ppt.name)
+                try:
+                    if os.path.exists(old_ppt_path):
+                        shutil.move(old_ppt_path, new_ppt_path)
+                    ppt.path = new_ppt_path
+                    ppt.save()
+                except OSError as e:
+                    return HttpResponse(f'Error moving PPT file {ppt.name}: {e}', status=500)
+
+            for child in catalog.children.all():
+                update_ppt_paths(child, os.path.join(new_path, child.label))
+
+        update_ppt_paths(catalog, new_path)
 
         return redirect('catalog_list')
     else:
@@ -217,3 +236,4 @@ def import_ppt_view(request):
 
         return redirect('ppt_list')
     return redirect('ppt_list')
+
