@@ -176,7 +176,8 @@
         {% for catalog, indent in catalog_tree %}
             <tr>
                 <td>
-                    {{ indent|safe }}{{ catalog.label }}
+                    {{ indent|safe }}
+                    <a href="{% url 'catalog_detail' catalog.id %}" class="folder-link">{{ catalog.label }}</a>
                 </td>
                 <td>{{ catalog.path }}</td>
                 <td>
