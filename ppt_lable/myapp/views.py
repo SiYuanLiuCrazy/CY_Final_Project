@@ -7,6 +7,7 @@ from .models import TyPptCatalog
 from .forms import CatalogForm
 from django.shortcuts import render, redirect, get_object_or_404
 import uuid
+import shutil
 
 def create_folder_view(request):
     if request.method == 'POST':
@@ -37,19 +38,28 @@ def catalog_list_view(request):
 
 def delete_catalog_view(request, catalog_id):
     catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
-    folder_path = catalog.path
 
-    # 删除数据库记录
-    catalog.delete()
+    # 递归删除目录及其所有子目录
+    def delete_directory(catalog):
+        folder_path = catalog.path
+        children = catalog.children.all()
+        for child in children:
+            delete_directory(child)  # 递归调用删除子目录
+        
+        catalog.delete()  # 删除数据库记录
 
-    # 删除文件系统中的文件夹
-    if os.path.exists(folder_path):
-        try:
-            os.rmdir(folder_path)  # os.rmdir 仅在文件夹为空时删除
-        except OSError:
-            # 如果文件夹不为空，可以使用 shutil.rmtree 递归删除
-            import shutil
-            shutil.rmtree(folder_path)
+        # 删除文件系统中的文件夹
+        if os.path.exists(folder_path):
+            try:
+                os.rmdir(folder_path)  # os.rmdir 仅在文件夹为空时删除
+            except OSError:
+                # 如果文件夹不为空，使用 shutil.rmtree 递归删除
+                shutil.rmtree(folder_path)
+    
+    try:
+        delete_directory(catalog)
+    except Exception as e:
+        return HttpResponse(f'删除失败: {e}', status=500)
 
     return redirect('catalog_list')
 
@@ -82,15 +92,39 @@ def edit_catalog_view(request, catalog_id):
             new_label = form.cleaned_data['catalog']
             old_path = catalog.path
             new_path = os.path.join(os.path.dirname(old_path), new_label)
+
+            # 尝试更改父文件夹的名称
+            try:
+                os.rename(old_path, new_path)
+            except OSError as e:
+                return HttpResponse(f'Error renaming folder: {e}', status=500)
+
+            # 更新父文件夹信息并保存到数据库
             catalog.label = new_label
             catalog.path = new_path
             catalog.save()
 
-            # 如果是父文件夹，更新所有子文件夹的路径
-            children = catalog.children.all()
-            for child in children:
-                child.path = os.path.join(new_path, child.label)
-                child.save()
+            # 定义更新子文件夹路径的递归函数
+            errors = []
+            def update_children_paths(parent_catalog):
+                children = parent_catalog.children.all()
+                for child in children:
+                    old_child_path = child.path
+                    new_child_path = os.path.join(parent_catalog.path, child.label)
+                    try:
+                        if os.path.exists(old_child_path):
+                            os.rename(old_child_path, new_child_path)  # 更改文件系统中的路径
+                        child.path = new_child_path  # 更新子目录的数据库记录
+                        child.save()
+                        update_children_paths(child)  # 递归更新更深层次的子文件夹
+                    except OSError as e:
+                        errors.append(f'Error renaming child folder {child.label}: {e}')
+
+            # 更新所有子文件夹的路径
+            update_children_paths(catalog)
+
+            if errors:
+                return HttpResponse("<br>".join(errors), status=500)
 
             return redirect('catalog_list')
     else:
