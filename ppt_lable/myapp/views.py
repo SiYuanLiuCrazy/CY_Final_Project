@@ -262,3 +262,44 @@ def catalog_detail_view(request, catalog_id):
         'ppts': ppts,
         'selected_catalog': catalog
     })
+
+def delete_ppt_view(request):
+    if request.method == 'POST':
+        ppt_id = request.POST.get('ppt_id')
+        ppt = get_object_or_404(TyPptMain, id=ppt_id)
+
+        # 删除文件
+        if os.path.exists(ppt.path):
+            os.remove(ppt.path)
+
+        # 获取父目录 ID，以便重定向时使用
+        catalog_id = ppt.catalog
+
+        # 删除数据库中的记录
+        ppt.delete()
+
+        return redirect('catalog_detail', catalog_id=catalog_id)
+    
+def move_ppt_view(request):
+    if request.method == 'POST':
+        ppt_id = request.POST.get('ppt_id')
+        target_folder_id = request.POST.get('target_folder')
+
+        ppt = get_object_or_404(TyPptMain, id=ppt_id)
+        target_folder = get_object_or_404(TyPptCatalog, id=target_folder_id)
+
+        old_path = ppt.path
+        new_path = os.path.join(target_folder.path, os.path.basename(old_path))
+
+        # 移动文件
+        try:
+            shutil.move(old_path, new_path)
+        except Exception as e:
+            return HttpResponse(f'移动失败: {e}', status=500)
+
+        # 更新数据库记录
+        ppt.path = new_path
+        ppt.catalog = target_folder.id  # 只需要将目标文件夹的ID赋值给catalog字段
+        ppt.save()
+
+        return redirect('catalog_detail', catalog_id=ppt.catalog)

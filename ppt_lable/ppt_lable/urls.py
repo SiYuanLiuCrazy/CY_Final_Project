@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from myapp.views import create_folder_view, catalog_list_view, delete_catalog_view, create_subitem_view, edit_catalog_view, move_catalog_view, ppt_list_view, import_ppt_view, catalog_detail_view
+from myapp.views import create_folder_view, catalog_list_view, delete_catalog_view, create_subitem_view, edit_catalog_view, move_catalog_view, ppt_list_view, import_ppt_view, catalog_detail_view, delete_ppt_view, move_ppt_view
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('create_folder/', create_folder_view, name='create_folder'),
@@ -29,4 +29,6 @@ urlpatterns = [
     path('ppt_list/', ppt_list_view, name='ppt_list'),
     path('import_ppt/', import_ppt_view, name='import_ppt'),
     path('catalog/<uuid:catalog_id>/', catalog_detail_view, name='catalog_detail'),
+    path('delete_ppt/', delete_ppt_view, name='delete_ppt'),  # 新增删除PPT的路径
+    path('move_ppt/', move_ppt_view, name='move_ppt'),  # 新增移动PPT的路径
 ]

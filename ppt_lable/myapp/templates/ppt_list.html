@@ -13,13 +13,26 @@
             document.getElementById('importModalOverlay').style.display = 'none';
         }
 
-        function toggleChildren(id) {
-            var element = document.getElementById('children-' + id);
-            if (element.style.display === 'none') {
-                element.style.display = 'block';
-            } else {
-                element.style.display = 'none';
-            }
+        function openDeleteModal(pptId) {
+            document.getElementById('delete_ppt_id').value = pptId;
+            document.getElementById('deleteModal').style.display = 'block';
+            document.getElementById('deleteModalOverlay').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            document.getElementById('deleteModalOverlay').style.display = 'none';
+        }
+
+        function openMoveModal(pptId) {
+            document.getElementById('move_ppt_id').value = pptId;
+            document.getElementById('moveModal').style.display = 'block';
+            document.getElementById('moveModalOverlay').style.display = 'block';
+        }
+
+        function closeMoveModal() {
+            document.getElementById('moveModal').style.display = 'none';
+            document.getElementById('moveModalOverlay').style.display = 'none';
         }
     </script>
     <style>
@@ -52,6 +65,27 @@
             border-radius: 4px;
         }
         .button:hover {
+            background-color: #45a049;
+        }
+        .delete-button, .move-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .move-button {
+            background-color: #4CAF50;
+        }
+        .delete-button:hover {
+            background-color: #e53935;
+        }
+        .move-button:hover {
             background-color: #45a049;
         }
         .catalog-tree {
@@ -108,7 +142,7 @@
         th {
             background-color: #f4f4f4;
         }
-        #importModal {
+        #importModal, #deleteModal, #moveModal {
             display: none;
             position: fixed;
             top: 50%;
@@ -121,7 +155,7 @@
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        #importModalOverlay {
+        #importModalOverlay, #deleteModalOverlay, #moveModalOverlay {
             display: none;
             position: fixed;
             top: 0;
@@ -212,6 +246,45 @@
                 </form>
             </div>
 
+            <div id="deleteModalOverlay" onclick="closeDeleteModal()"></div>
+            <div id="deleteModal">
+                <div class="modal-header">
+                    <h2>确认删除</h2>
+                </div>
+                <form method="POST" action="{% url 'delete_ppt' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="delete_ppt_id" name="ppt_id">
+                    <p>你确定要删除这个文件吗？此操作无法撤销。</p>
+                    <div class="modal-footer">
+                        <button type="button" class="button cancel" onclick="closeDeleteModal()">取消</button>
+                        <button type="submit" class="button">删除</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="moveModalOverlay" onclick="closeMoveModal()"></div>
+            <div id="moveModal">
+                <div class="modal-header">
+                    <h2>移动PPT文件</h2>
+                </div>
+                <form method="POST" action="{% url 'move_ppt' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="move_ppt_id" name="ppt_id">
+                    <div class="form-group">
+                        <label for="move_target_folder">目标文件夹:</label>
+                        <select id="move_target_folder" name="target_folder" required>
+                            {% for catalog, indent in catalog_tree %}
+                                <option value="{{ catalog.id }}">{{ indent|safe }}{{ catalog.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="button cancel" onclick="closeMoveModal()">取消</button>
+                        <button type="submit" class="button">移动</button>
+                    </div>
+                </form>
+            </div>
+
             {% if ppts %}
                 <h2>{{ selected_catalog.label }} 的PPT列表</h2>
                 <table>
@@ -222,6 +295,7 @@
                             <th>文件名</th>
                             <th>类型</th>
                             <th>大小 (字节)</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -232,6 +306,10 @@
                                 <td>{{ ppt.name }}</td>
                                 <td>{{ ppt.type }}</td>
                                 <td>{{ ppt.size }}</td>
+                                <td>
+                                    <button class="delete-button" onclick="openDeleteModal('{{ ppt.id }}')">删除</button>
+                                    <button class="move-button" onclick="openMoveModal('{{ ppt.id }}')">移动</button>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
