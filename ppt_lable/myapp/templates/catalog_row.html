@@ -1,7 +1,9 @@
 <tr>
     <td>
         {% if catalog.children.count > 0 %}
-            <a href="#" onclick="toggleChildren('{{ catalog.id }}')">[+]</a>
+            <a href="#" onclick="toggleChildren('{{ catalog.id }}')">
+                <span id="toggle-icon-{{ catalog.id }}">[+]</span>
+            </a>
         {% endif %}
         {{ catalog.label }}
     </td>

@@ -3,12 +3,12 @@ from django.shortcuts import render
 # Create your views here.
 import os
 from django.http import HttpResponse
-from .models import TyPptCatalog
+from .models import TyPptCatalog, TyPptMain
 from .forms import CatalogForm
 from django.shortcuts import render, redirect, get_object_or_404
 import uuid
 import shutil
-
+from django.core.files.storage import FileSystemStorage
 def create_folder_view(request):
     if request.method == 'POST':
         form = CatalogForm(request.POST)
@@ -31,6 +31,15 @@ def create_folder_view(request):
         form = CatalogForm()
 
     return render(request, 'create_folder.html', {'form': form})
+
+def get_catalog_tree(catalogs, parent=None, level=0):
+    tree = []
+    for catalog in catalogs:
+        if catalog.parent_id == parent:
+            indent = '&nbsp;' * level * 4  # 生成缩进字符串
+            tree.append((catalog, indent))
+            tree.extend(get_catalog_tree(catalogs, catalog.id, level + 1))
+    return tree
 
 def catalog_list_view(request):
     catalogs = TyPptCatalog.objects.all().order_by('label')
@@ -179,11 +188,32 @@ def move_catalog_view(request):
     else:
         return redirect('catalog_list')
     
-def get_catalog_tree(catalogs, parent=None, level=0):
-    tree = []
-    for catalog in catalogs:
-        if catalog.parent_id == parent:
-            indent = '&nbsp;' * level * 4  # 生成缩进字符串
-            tree.append((catalog, indent))
-            tree.extend(get_catalog_tree(catalogs, catalog.id, level + 1))
-    return tree
+def ppt_list_view(request):
+    catalogs = TyPptCatalog.objects.all()
+    return render(request, 'ppt_list.html', {'catalogs': catalogs})
+
+def import_ppt_view(request):
+    if request.method == 'POST':
+        ppt_file = request.FILES['ppt_file']
+        title = request.POST['title']
+        target_folder_id = request.POST['target_folder']
+
+        target_folder = TyPptCatalog.objects.get(id=target_folder_id)
+        target_path = target_folder.path
+
+        fs = FileSystemStorage(location=target_path)
+        filename = fs.save(ppt_file.name, ppt_file)
+        file_path = fs.path(filename)
+
+        ppt_main = TyPptMain.objects.create(
+            id=uuid.uuid4(),
+            title=title,
+            catalog=target_folder.id,
+            name=ppt_file.name,
+            type=ppt_file.name.split('.')[-1],
+            size=ppt_file.size,
+            path=file_path
+        )
+
+        return redirect('ppt_list')
+    return redirect('ppt_list')
