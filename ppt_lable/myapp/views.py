@@ -33,8 +33,9 @@ def create_folder_view(request):
     return render(request, 'create_folder.html', {'form': form})
 
 def catalog_list_view(request):
-    catalogs = TyPptCatalog.objects.filter(parent_id__isnull=True).order_by('label')
-    return render(request, 'catalog_list.html', {'catalogs': catalogs})
+    catalogs = TyPptCatalog.objects.all().order_by('label')
+    catalog_tree = get_catalog_tree(catalogs)
+    return render(request, 'catalog_list.html', {'catalog_tree': catalog_tree})
 
 def delete_catalog_view(request, catalog_id):
     catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
@@ -131,3 +132,58 @@ def edit_catalog_view(request, catalog_id):
         form = CatalogForm(initial={'catalog': catalog.label}, catalog_id=catalog_id, parent_id=catalog.parent_id)
 
     return render(request, 'edit_catalog.html', {'form': form, 'catalog': catalog})
+
+def move_catalog_view(request):
+    if request.method == 'POST':
+        catalog_id = request.POST.get('catalog_id')
+        target_folder_id = request.POST.get('target_folder')
+
+        catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
+        target_folder = get_object_or_404(TyPptCatalog, id=target_folder_id)
+
+        old_path = catalog.path
+        new_path = os.path.join(target_folder.path, catalog.label)
+
+        if os.path.exists(new_path):
+            return HttpResponse('移动失败，目标文件夹中已存在同名文件夹')
+
+        # 移动文件夹
+        try:
+            shutil.move(old_path, new_path)  # 使用shutil.move而不是os.rename来处理跨分区移动
+        except OSError as e:
+            return HttpResponse(f'Error moving folder: {e}', status=500)
+
+        # 更新数据库中的路径信息
+        catalog.parent_id = target_folder.id
+        catalog.path = new_path
+        catalog.save()
+
+        # 更新子文件夹的路径信息
+        def update_children_paths(parent_catalog, new_parent_path):
+            children = parent_catalog.children.all()
+            for child in children:
+                old_child_path = child.path
+                new_child_path = os.path.join(new_parent_path, child.label)
+                try:
+                    if os.path.exists(old_child_path):
+                        shutil.move(old_child_path, new_child_path)  # 使用shutil.move而不是os.rename
+                    child.path = new_child_path
+                    child.save()
+                    update_children_paths(child, new_child_path)
+                except OSError as e:
+                    return HttpResponse(f'Error renaming child folder {child.label}: {e}', status=500)
+
+        update_children_paths(catalog, new_path)
+
+        return redirect('catalog_list')
+    else:
+        return redirect('catalog_list')
+    
+def get_catalog_tree(catalogs, parent=None, level=0):
+    tree = []
+    for catalog in catalogs:
+        if catalog.parent_id == parent:
+            indent = '&nbsp;' * level * 4  # 生成缩进字符串
+            tree.append((catalog, indent))
+            tree.extend(get_catalog_tree(catalogs, catalog.id, level + 1))
+    return tree

@@ -9,7 +9,8 @@
     <td>
         <a href="{% url 'delete_catalog' catalog.id %}">删除</a>
         <a href="#" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
-	<a href="{% url 'edit_catalog' catalog.id %}">编辑</a>
+        <a href="{% url 'edit_catalog' catalog.id %}">编辑</a>
+        <a href="#" onclick="openMoveModal('{{ catalog.id }}')">移动</a>
     </td>
 </tr>
 {% if catalog.children.count > 0 %}

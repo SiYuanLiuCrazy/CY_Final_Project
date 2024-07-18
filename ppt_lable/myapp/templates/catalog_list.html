@@ -20,9 +20,18 @@
                 element.style.display = 'none';
             }
         }
+
+        function openMoveModal(catalogId) {
+            document.getElementById('move_catalog_id').value = catalogId;
+            document.getElementById('moveModal').style.display = 'block';
+        }
+
+        function closeMoveModal() {
+            document.getElementById('moveModal').style.display = 'none';
+        }
     </script>
     <style>
-        #subitemModal {
+        #subitemModal, #moveModal {
             display: none;
             position: fixed;
             top: 50%;
@@ -33,7 +42,7 @@
             background: #fff;
             z-index: 1000;
         }
-        #subitemModalOverlay {
+        #subitemModalOverlay, #moveModalOverlay {
             display: none;
             position: fixed;
             top: 0;
@@ -54,8 +63,19 @@
             <th>Path</th>
             <th>Actions</th>
         </tr>
-        {% for catalog in catalogs %}
-            {% include 'catalog_row.html' with catalog=catalog %}
+        {% for catalog, indent in catalog_tree %}
+            <tr>
+                <td>
+                    {{ indent|safe }}{{ catalog.label }}
+                </td>
+                <td>{{ catalog.path }}</td>
+                <td>
+                    <a href="{% url 'delete_catalog' catalog.id %}">删除</a>
+                    <a href="#" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
+                    <a href="{% url 'edit_catalog' catalog.id %}">编辑</a>
+                    <a href="#" onclick="openMoveModal('{{ catalog.id }}')">移动</a>
+                </td>
+            </tr>
         {% endfor %}
     </table>
 
@@ -69,6 +89,23 @@
             <input type="text" id="subitem_name" name="subitem_name" required>
             <button type="submit">创建</button>
             <button type="button" onclick="closeSubitemModal()">取消</button>
+        </form>
+    </div>
+
+    <div id="moveModalOverlay" onclick="closeMoveModal()"></div>
+    <div id="moveModal">
+        <h2>移动文件夹</h2>
+        <form method="POST" action="{% url 'move_catalog' %}">
+            {% csrf_token %}
+            <input type="hidden" id="move_catalog_id" name="catalog_id">
+            <label for="target_folder">目标文件夹:</label>
+            <select id="target_folder" name="target_folder" required>
+                {% for catalog, indent in catalog_tree %}
+                    <option value="{{ catalog.id }}">{{ indent|safe }}{{ catalog.label }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">移动</button>
+            <button type="button" onclick="closeMoveModal()">取消</button>
         </form>
     </div>
 </body>
