@@ -6,10 +6,12 @@
         function openSubitemModal(parentId) {
             document.getElementById('parent_id').value = parentId;
             document.getElementById('subitemModal').style.display = 'block';
+            document.getElementById('subitemModalOverlay').style.display = 'block';
         }
 
         function closeSubitemModal() {
             document.getElementById('subitemModal').style.display = 'none';
+            document.getElementById('subitemModalOverlay').style.display = 'none';
         }
 
         function toggleChildren(id) {
@@ -24,13 +26,65 @@
         function openMoveModal(catalogId) {
             document.getElementById('move_catalog_id').value = catalogId;
             document.getElementById('moveModal').style.display = 'block';
+            document.getElementById('moveModalOverlay').style.display = 'block';
         }
 
         function closeMoveModal() {
             document.getElementById('moveModal').style.display = 'none';
+            document.getElementById('moveModalOverlay').style.display = 'none';
         }
     </script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        a.button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        a.button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
         #subitemModal, #moveModal {
             display: none;
             position: fixed;
@@ -41,7 +95,12 @@
             padding: 20px;
             background: #fff;
             z-index: 1000;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 100%;
         }
+
         #subitemModalOverlay, #moveModalOverlay {
             display: none;
             position: fixed;
@@ -52,12 +111,63 @@
             background: rgba(0, 0, 0, 0.5);
             z-index: 999;
         }
+
+        .modal-header {
+            margin-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input, .form-group select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .modal-footer button {
+            margin-left: 10px;
+            padding: 10px 20px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .modal-footer button:hover {
+            background-color: #45a049;
+        }
+
+        .modal-footer button.cancel {
+            background-color: #ccc;
+            color: #333;
+        }
+
+        .modal-footer button.cancel:hover {
+            background-color: #bbb;
+        }
     </style>
 </head>
 <body>
     <h1>Catalog List</h1>
-    <a href="{% url 'create_folder' %}">创建新文件夹</a>
-    <table border="1">
+    <a href="{% url 'create_folder' %}" class="button">创建新文件夹</a>
+    <table>
         <tr>
             <th>Label</th>
             <th>Path</th>
@@ -81,31 +191,43 @@
 
     <div id="subitemModalOverlay" onclick="closeSubitemModal()"></div>
     <div id="subitemModal">
-        <h2>创建子项</h2>
+        <div class="modal-header">
+            <h2>创建子项</h2>
+        </div>
         <form method="POST" action="{% url 'create_subitem' %}">
             {% csrf_token %}
             <input type="hidden" id="parent_id" name="parent_id">
-            <label for="subitem_name">子项名称:</label>
-            <input type="text" id="subitem_name" name="subitem_name" required>
-            <button type="submit">创建</button>
-            <button type="button" onclick="closeSubitemModal()">取消</button>
+            <div class="form-group">
+                <label for="subitem_name">子项名称:</label>
+                <input type="text" id="subitem_name" name="subitem_name" required>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="cancel" onclick="closeSubitemModal()">取消</button>
+                <button type="submit">创建</button>
+            </div>
         </form>
     </div>
 
     <div id="moveModalOverlay" onclick="closeMoveModal()"></div>
     <div id="moveModal">
-        <h2>移动文件夹</h2>
+        <div class="modal-header">
+            <h2>移动文件夹</h2>
+        </div>
         <form method="POST" action="{% url 'move_catalog' %}">
             {% csrf_token %}
             <input type="hidden" id="move_catalog_id" name="catalog_id">
-            <label for="target_folder">目标文件夹:</label>
-            <select id="target_folder" name="target_folder" required>
-                {% for catalog, indent in catalog_tree %}
-                    <option value="{{ catalog.id }}">{{ indent|safe }}{{ catalog.label }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit">移动</button>
-            <button type="button" onclick="closeMoveModal()">取消</button>
+            <div class="form-group">
+                <label for="target_folder">目标文件夹:</label>
+                <select id="target_folder" name="target_folder" required>
+                    {% for catalog, indent in catalog_tree %}
+                        <option value="{{ catalog.id }}">{{ indent|safe }}{{ catalog.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="cancel" onclick="closeMoveModal()">取消</button>
+                <button type="submit">移动</button>
+            </div>
         </form>
     </div>
 </body>
