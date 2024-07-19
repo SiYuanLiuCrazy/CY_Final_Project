@@ -53,22 +53,32 @@ def catalog_list_view(request):
 def delete_catalog_view(request, catalog_id):
     catalog = get_object_or_404(TyPptCatalog, id=catalog_id)
 
-    # 递归删除目录及其所有子目录
+    # 递归删除目录及其所有子目录和文件
     def delete_directory(catalog):
         folder_path = catalog.path
         children = catalog.children.all()
-        for child in children:
-            delete_directory(child)  # 递归调用删除子目录
         
-        catalog.delete()  # 删除数据库记录
+        # 删除子目录
+        for child in children:
+            delete_directory(child)
+        
+        # 删除文件夹中的文件
+        files = TyPptMain.objects.filter(catalog=catalog.id)
+        for file in files:
+            file_path = file.path
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            file.delete()
 
         # 删除文件系统中的文件夹
         if os.path.exists(folder_path):
             try:
                 os.rmdir(folder_path)  # os.rmdir 仅在文件夹为空时删除
             except OSError:
-                # 如果文件夹不为空，使用 shutil.rmtree 递归删除
-                shutil.rmtree(folder_path)
+                shutil.rmtree(folder_path)  # 使用 shutil.rmtree 递归删除
+
+        # 删除数据库记录
+        catalog.delete()
     
     try:
         delete_directory(catalog)
