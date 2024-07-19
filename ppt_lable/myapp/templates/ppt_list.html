@@ -48,6 +48,17 @@
             document.getElementById('editModal').style.display = 'none';
             document.getElementById('editModalOverlay').style.display = 'none';
         }
+
+        function openSplitModal(pptId) {
+            document.getElementById('split_ppt_id').value = pptId;
+            document.getElementById('splitModal').style.display = 'block';
+            document.getElementById('splitModalOverlay').style.display = 'block';
+        }
+
+        function closeSplitModal() {
+            document.getElementById('splitModal').style.display = 'none';
+            document.getElementById('splitModalOverlay').style.display = 'none';
+        }
     </script>
     <style>
         body {
@@ -81,7 +92,7 @@
         .button:hover {
             background-color: #45a049;
         }
-        .delete-button, .move-button, .edit-button {
+        .delete-button, .move-button, .edit-button, .split-button {
             background-color: #f44336;
             color: white;
             border: none;
@@ -99,6 +110,9 @@
         .edit-button {
             background-color: #FF9800;
         }
+        .split-button {
+            background-color: #2196F3;
+        }
         .delete-button:hover {
             background-color: #e53935;
         }
@@ -107,6 +121,9 @@
         }
         .edit-button:hover {
             background-color: #fb8c00;
+        }
+        .split-button:hover {
+            background-color: #1976D2;
         }
         .catalog-tree {
             width: 25%;
@@ -162,7 +179,7 @@
         th {
             background-color: #f4f4f4;
         }
-        #importModal, #deleteModal, #moveModal, #editModal {
+        #importModal, #deleteModal, #moveModal, #editModal, #splitModal {
             display: none;
             position: fixed;
             top: 50%;
@@ -175,7 +192,7 @@
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        #importModalOverlay, #deleteModalOverlay, #moveModalOverlay, #editModalOverlay {
+        #importModalOverlay, #deleteModalOverlay, #moveModalOverlay, #editModalOverlay, #splitModalOverlay {
             display: none;
             position: fixed;
             top: 0;
@@ -332,6 +349,22 @@
                 </form>
             </div>
 
+            <div id="splitModalOverlay" onclick="closeSplitModal()"></div>
+            <div id="splitModal">
+                <div class="modal-header">
+                    <h2>拆分PPT文件</h2>
+                </div>
+                <form method="POST" action="{% url 'split_ppt' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="split_ppt_id" name="ppt_id">
+                    <p>你确定要拆分这个文件吗？此操作将把文件拆分为单页PPTX文件，并存储在新的文件夹中。</p>
+                    <div class="modal-footer">
+                        <button type="button" class="button cancel" onclick="closeSplitModal()">取消</button>
+                        <button type="submit" class="button">拆分</button>
+                    </div>
+                </form>
+            </div>
+
             {% if ppts %}
                 <h2>{{ selected_catalog.label }} 的PPT列表</h2>
                 <table>
@@ -340,6 +373,8 @@
                             <th>标题</th>
                             <th>标签</th>
                             <th>文件名</th>
+                            <th>类型</th>
+                            <th>大小 (字节)</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -349,10 +384,13 @@
                                 <td>{{ ppt.title }}</td>
                                 <td>{{ ppt.lable }}</td>
                                 <td>{{ ppt.name }}</td>
+                                <td>{{ ppt.type }}</td>
+                                <td>{{ ppt.size }}</td>
                                 <td>
                                     <button class="delete-button" onclick="openDeleteModal('{{ ppt.id }}')">删除</button>
                                     <button class="move-button" onclick="openMoveModal('{{ ppt.id }}')">移动</button>
                                     <button class="edit-button" onclick="openEditModal('{{ ppt.id }}', '{{ ppt.title }}', '{{ ppt.lable }}', '{{ ppt.name }}')">编辑</button>
+                                    <button class="split-button" onclick="openSplitModal('{{ ppt.id }}')">拆分</button>
                                 </td>
                             </tr>
                         {% endfor %}

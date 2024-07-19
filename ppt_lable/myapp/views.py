@@ -332,7 +332,8 @@ def edit_ppt_view(request):
         ppt.save()
 
         return redirect('catalog_detail', catalog_id=ppt.catalog)
-    
+
+
 def split_ppt_view(request):
     if request.method == 'POST':
         ppt_id = request.POST.get('ppt_id')
@@ -348,16 +349,21 @@ def split_ppt_view(request):
         presentation.LoadFromFile(file_path)
         slide_count = len(presentation.Slides)
 
+        parent_catalog = get_object_or_404(TyPptCatalog, id=ppt.catalog)
+
         catalog = TyPptCatalog.objects.create(
             label=output_folder_name,
-            path=output_folder_path
+            path=output_folder_path,
+            parent_id=parent_catalog.id
         )
 
         for i in range(slide_count):
-            slide = presentation.Slides[i]
+            new_presentation = Presentation()
+            new_slide = presentation.Slides[i].Clone()
+            new_presentation.Slides.Append(new_slide)
             slide_filename = f"{output_folder_name}_slide{i + 1}.pptx"
             output_file_path = os.path.join(output_folder_path, slide_filename)
-            slide.SaveToFile(output_file_path, FileFormat.Pptx2019)
+            new_presentation.SaveToFile(output_file_path, FileFormat.Pptx2019)
             
             TyPptMain.objects.create(
                 title=ppt.title,
@@ -368,6 +374,7 @@ def split_ppt_view(request):
                 size=os.path.getsize(output_file_path),
                 path=output_file_path
             )
+            new_presentation.Dispose()
 
         presentation.Dispose()
 
