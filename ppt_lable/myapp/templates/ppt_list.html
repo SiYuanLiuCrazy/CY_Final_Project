@@ -34,6 +34,20 @@
             document.getElementById('moveModal').style.display = 'none';
             document.getElementById('moveModalOverlay').style.display = 'none';
         }
+
+        function openEditModal(pptId, currentTitle, currentLabel, currentName) {
+            document.getElementById('edit_ppt_id').value = pptId;
+            document.getElementById('edit_title').value = currentTitle;
+            document.getElementById('edit_label').value = currentLabel;
+            document.getElementById('edit_name').value = currentName;
+            document.getElementById('editModal').style.display = 'block';
+            document.getElementById('editModalOverlay').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            document.getElementById('editModalOverlay').style.display = 'none';
+        }
     </script>
     <style>
         body {
@@ -67,7 +81,7 @@
         .button:hover {
             background-color: #45a049;
         }
-        .delete-button, .move-button {
+        .delete-button, .move-button, .edit-button {
             background-color: #f44336;
             color: white;
             border: none;
@@ -82,11 +96,17 @@
         .move-button {
             background-color: #4CAF50;
         }
+        .edit-button {
+            background-color: #FF9800;
+        }
         .delete-button:hover {
             background-color: #e53935;
         }
         .move-button:hover {
             background-color: #45a049;
+        }
+        .edit-button:hover {
+            background-color: #fb8c00;
         }
         .catalog-tree {
             width: 25%;
@@ -142,7 +162,7 @@
         th {
             background-color: #f4f4f4;
         }
-        #importModal, #deleteModal, #moveModal {
+        #importModal, #deleteModal, #moveModal, #editModal {
             display: none;
             position: fixed;
             top: 50%;
@@ -155,7 +175,7 @@
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        #importModalOverlay, #deleteModalOverlay, #moveModalOverlay {
+        #importModalOverlay, #deleteModalOverlay, #moveModalOverlay, #editModalOverlay {
             display: none;
             position: fixed;
             top: 0;
@@ -285,6 +305,33 @@
                 </form>
             </div>
 
+            <div id="editModalOverlay" onclick="closeEditModal()"></div>
+            <div id="editModal">
+                <div class="modal-header">
+                    <h2>编辑PPT信息</h2>
+                </div>
+                <form method="POST" action="{% url 'edit_ppt' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="edit_ppt_id" name="ppt_id">
+                    <div class="form-group">
+                        <label for="edit_title">标题:</label>
+                        <input type="text" id="edit_title" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_label">标签:</label>
+                        <input type="text" id="edit_label" name="label" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_name">文件名:</label>
+                        <input type="text" id="edit_name" name="name" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="button cancel" onclick="closeEditModal()">取消</button>
+                        <button type="submit" class="button">保存</button>
+                    </div>
+                </form>
+            </div>
+
             {% if ppts %}
                 <h2>{{ selected_catalog.label }} 的PPT列表</h2>
                 <table>
@@ -293,8 +340,6 @@
                             <th>标题</th>
                             <th>标签</th>
                             <th>文件名</th>
-                            <th>类型</th>
-                            <th>大小 (字节)</th>
                             <th>操作</th>
                         </tr>
                     </thead>
@@ -304,11 +349,10 @@
                                 <td>{{ ppt.title }}</td>
                                 <td>{{ ppt.lable }}</td>
                                 <td>{{ ppt.name }}</td>
-                                <td>{{ ppt.type }}</td>
-                                <td>{{ ppt.size }}</td>
                                 <td>
                                     <button class="delete-button" onclick="openDeleteModal('{{ ppt.id }}')">删除</button>
                                     <button class="move-button" onclick="openMoveModal('{{ ppt.id }}')">移动</button>
+                                    <button class="edit-button" onclick="openEditModal('{{ ppt.id }}', '{{ ppt.title }}', '{{ ppt.lable }}', '{{ ppt.name }}')">编辑</button>
                                 </td>
                             </tr>
                         {% endfor %}

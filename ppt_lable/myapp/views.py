@@ -9,6 +9,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 import uuid
 import shutil
 from django.core.files.storage import FileSystemStorage
+
+
 def create_folder_view(request):
     if request.method == 'POST':
         form = CatalogForm(request.POST)
@@ -301,5 +303,72 @@ def move_ppt_view(request):
         ppt.path = new_path
         ppt.catalog = target_folder.id  # 只需要将目标文件夹的ID赋值给catalog字段
         ppt.save()
+
+        return redirect('catalog_detail', catalog_id=ppt.catalog)
+    
+def edit_ppt_view(request):
+    if request.method == 'POST':
+        ppt_id = request.POST.get('ppt_id')
+        new_title = request.POST.get('title')
+        new_label = request.POST.get('label')
+        new_name = request.POST.get('name')
+
+        ppt = get_object_or_404(TyPptMain, id=ppt_id)
+        old_path = ppt.path
+        new_path = os.path.join(os.path.dirname(old_path), new_name)
+
+        # 更新文件名
+        if new_name != ppt.name:
+            try:
+                os.rename(old_path, new_path)
+            except Exception as e:
+                return HttpResponse(f'重命名失败: {e}', status=500)
+
+        # 更新数据库记录
+        ppt.title = new_title
+        ppt.lable = new_label
+        ppt.name = new_name
+        ppt.path = new_path
+        ppt.save()
+
+        return redirect('catalog_detail', catalog_id=ppt.catalog)
+    
+def split_ppt_view(request):
+    if request.method == 'POST':
+        ppt_id = request.POST.get('ppt_id')
+        ppt = get_object_or_404(TyPptMain, id=ppt_id)
+
+        file_path = ppt.path
+        folder_path = os.path.dirname(file_path)
+        output_folder_name = f"{os.path.splitext(ppt.name)[0]}_Single_Page"
+        output_folder_path = os.path.join(folder_path, output_folder_name)
+        os.makedirs(output_folder_path, exist_ok=True)
+
+        presentation = Presentation()
+        presentation.LoadFromFile(file_path)
+        slide_count = len(presentation.Slides)
+
+        catalog = TyPptCatalog.objects.create(
+            label=output_folder_name,
+            path=output_folder_path
+        )
+
+        for i in range(slide_count):
+            slide = presentation.Slides[i]
+            slide_filename = f"{output_folder_name}_slide{i + 1}.pptx"
+            output_file_path = os.path.join(output_folder_path, slide_filename)
+            slide.SaveToFile(output_file_path, FileFormat.Pptx2019)
+            
+            TyPptMain.objects.create(
+                title=ppt.title,
+                lable=ppt.lable,
+                catalog=catalog.id,
+                name=slide_filename,
+                type="pptx",
+                size=os.path.getsize(output_file_path),
+                path=output_file_path
+            )
+
+        presentation.Dispose()
 
         return redirect('catalog_detail', catalog_id=ppt.catalog)
