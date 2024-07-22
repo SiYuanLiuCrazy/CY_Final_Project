@@ -20,6 +20,8 @@ from openai import RateLimitError, AuthenticationError
 import json
 from django.core.cache import cache
 from django.http import JsonResponse
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 def create_folder_view(request):
     if request.method == 'POST':
@@ -382,6 +384,9 @@ def split_ppt_view(request):
             base_url = "https://api.moonshot.cn/v1",
         )
 
+        channel_layer = get_channel_layer()
+        cache.set(f"split_progress_{ppt_id}", {'current_page': 0, 'total_pages': slide_count, 'ppt_name': ppt.name})
+
         for i in range(slide_count):
             slide_filename = f"{output_folder_name}_slide{i + 1}.pptx"
             output_file_path = os.path.join(output_folder_path, slide_filename)
@@ -420,20 +425,29 @@ def split_ppt_view(request):
             )
 
             # 更新进度
-            cache.set(f"split_progress_{ppt_id}", {'current_page': i + 1, 'total_pages': slide_count}, None)
+            progress_data = {'current_page': i + 1, 'total_pages': slide_count, 'ppt_name': ppt.name}
+            cache.set(f"split_progress_{ppt_id}", progress_data)
+            async_to_sync(channel_layer.group_send)(
+                f'progress_{ppt_id}',
+                {
+                    'type': 'progress_update',
+                    'message': progress_data
+                }
+            )
+
             # 删除临时PDF文件
             os.remove(temp_pdf_path)
             time.sleep(30)
         presentation.Dispose()
 
-        # 完成后删除进度缓存
+        # 删除进度缓存
         cache.delete(f"split_progress_{ppt_id}")
 
         return redirect('catalog_detail', catalog_id=ppt.catalog)
 
 def split_progress_view(request):
     ppt_id = request.GET.get('ppt_id')
-    progress = cache.get(f"split_progress_{ppt_id}", {'current_page': 0, 'total_pages': 0})
+    progress = cache.get(f"split_progress_{ppt_id}", {'current_page': 0, 'total_pages': 0, 'ppt_name': '无任务'})
     return JsonResponse(progress)
 
 def generate_title_from_pdf(client, temp_pdf_path):

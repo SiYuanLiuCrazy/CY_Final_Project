@@ -3,6 +3,10 @@
 <head>
     <title>PPT List</title>
     <script>
+        let socket;
+        let pptId;
+        let pptName;
+
         function openImportModal() {
             document.getElementById('importModal').style.display = 'block';
             document.getElementById('importModalOverlay').style.display = 'block';
@@ -49,8 +53,9 @@
             document.getElementById('editModalOverlay').style.display = 'none';
         }
 
-        function openSplitModal(pptId) {
+        function openSplitModal(pptId, pptName) {
             document.getElementById('split_ppt_id').value = pptId;
+            document.getElementById('split_ppt_name').value = pptName;
             document.getElementById('splitModal').style.display = 'block';
             document.getElementById('splitModalOverlay').style.display = 'block';
         }
@@ -60,17 +65,20 @@
             document.getElementById('splitModalOverlay').style.display = 'none';
         }
 
-        function updateProgress(currentPage, totalPages) {
+        function updateProgress(pptName, currentPage, totalPages) {
             const progressText = document.getElementById('progressText');
             const progressContainer = document.getElementById('progressContainer');
 
-            progressText.innerText = `正在拆分第 ${currentPage} 页/共 ${totalPages} 页`;
+            if (totalPages === 0) {
+                progressText.innerText = '无任务';
+            } else {
+                progressText.innerText = `${pptName}：正在拆分第 ${currentPage} 页/共 ${totalPages} 页`;
 
-            if (currentPage === totalPages) {
-                progressText.innerText = '拆分完成';
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                }, 3000);  // 3秒后隐藏进度条
+                if (currentPage === totalPages) {
+                    setTimeout(() => {
+                        progressText.innerText = '无任务';
+                    }, 3000);  // 3秒后显示无任务
+                }
             }
         }
 
@@ -79,24 +87,58 @@
             progressContainer.style.display = 'block';
         }
 
-        function updateSplitProgress(pptId) {
-            fetch(`/split_progress/?ppt_id=${pptId}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateProgress(data.current_page, data.total_pages);
-                    if (data.current_page < data.total_pages) {
-                        setTimeout(() => updateSplitProgress(pptId), 1000);
-                    }
-                });
+        function startWebSocket() {
+            showProgress();
+            socket = new WebSocket(`ws://${window.location.host}/ws/progress/${pptId}/`);
+
+            socket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                const progress = data.message;
+                updateProgress(pptName, progress.current_page, progress.total_pages);
+            };
+
+            socket.onclose = function(e) {
+                console.error('WebSocket closed unexpectedly');
+            };
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('#splitModal form').addEventListener('submit', function(event) {
+                pptId = document.getElementById('split_ppt_id').value;
+                pptName = document.getElementById('split_ppt_name').value;
+                updateProgress(pptName, 0, 0); // 初始化任务显示
                 showProgress();
-                const pptId = document.getElementById('split_ppt_id').value;
-                updateSplitProgress(pptId);
+                startWebSocket();
+                closeSplitModal(); // 关闭拆分模态框
             });
+
+            // 加载页面时获取当前进度
+            fetch('/split_progress/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.current_page || data.total_pages) {
+                        updateProgress(data.ppt_name, data.current_page, data.total_pages);
+                    } else {
+                        updateProgress('无任务', 0, 0);
+                    }
+                });
         });
+
+        function toggleProgressSize() {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressText = document.getElementById('progressText');
+            const toggleButton = document.getElementById('toggleButton');
+
+            if (progressContainer.classList.contains('small')) {
+                progressContainer.classList.remove('small');
+                progressText.style.display = 'block';
+                toggleButton.innerText = '-';
+            } else {
+                progressContainer.classList.add('small');
+                progressText.style.display = 'none';
+                toggleButton.innerText = '+';
+            }
+        }
     </script>
     <style>
         body {
@@ -277,19 +319,24 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: width 0.3s, height 0.3s;
+        }
+        #progressContainer.small {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+        }
+        #progressContainer.small #progressText {
             display: none;
         }
-        #progressBar {
-            width: 100%;
-            height: 20px;
-            background-color: #f1f1f1;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        #progressBar div {
-            height: 100%;
-            background-color: #4CAF50;
-            width: 0;
+        #progressContainer #toggleButton {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
         }
         #progressText {
             margin-top: 10px;
@@ -375,7 +422,7 @@
                                     <button class="delete-button" onclick="openDeleteModal('{{ ppt.id }}')">删除</button>
                                     <button class="move-button" onclick="openMoveModal('{{ ppt.id }}')">移动</button>
                                     <button class="edit-button" onclick="openEditModal('{{ ppt.id }}', '{{ ppt.title }}', '{{ ppt.lable }}', '{{ ppt.name }}')">编辑</button>
-                                    <button class="split-button" onclick="openSplitModal('{{ ppt.id }}')">拆分</button>
+                                    <button class="split-button" onclick="openSplitModal('{{ ppt.id }}', '{{ ppt.name }}')">拆分</button>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -493,9 +540,10 @@
         <div class="modal-header">
             <h2>拆分PPT文件</h2>
         </div>
-        <form method="POST" action="{% url 'split_ppt' %}" onsubmit="showProgress()">
+        <form method="POST" action="{% url 'split_ppt' %}" onsubmit="showProgress(); closeSplitModal();">
             {% csrf_token %}
             <input type="hidden" id="split_ppt_id" name="ppt_id">
+            <input type="hidden" id="split_ppt_name" name="ppt_name">
             <p>确认要拆分该PPT文件吗？每个幻灯片将保存为单独的文件。</p>
             <div class="modal-footer">
                 <button type="button" class="button" onclick="closeSplitModal()">取消</button>
@@ -506,8 +554,8 @@
 
     <!-- 进度条 -->
     <div id="progressContainer">
-        <div id="progressBar"><div></div></div>
-        <div id="progressText">正在拆分第 0 页/共 0 页</div>
+        <button id="toggleButton" onclick="toggleProgressSize()">-</button>
+        <div id="progressText">无任务</div>
     </div>
 </body>
 </html>
