@@ -18,6 +18,8 @@ import tempfile
 import time
 from openai import RateLimitError, AuthenticationError
 import json
+from django.core.cache import cache
+from django.http import JsonResponse
 
 def create_folder_view(request):
     if request.method == 'POST':
@@ -417,13 +419,23 @@ def split_ppt_view(request):
                 path=output_file_path
             )
 
+            # 更新进度
+            cache.set(f"split_progress_{ppt_id}", {'current_page': i + 1, 'total_pages': slide_count}, None)
             # 删除临时PDF文件
             os.remove(temp_pdf_path)
             time.sleep(30)
         presentation.Dispose()
 
+        # 完成后删除进度缓存
+        cache.delete(f"split_progress_{ppt_id}")
+
         return redirect('catalog_detail', catalog_id=ppt.catalog)
-    
+
+def split_progress_view(request):
+    ppt_id = request.GET.get('ppt_id')
+    progress = cache.get(f"split_progress_{ppt_id}", {'current_page': 0, 'total_pages': 0})
+    return JsonResponse(progress)
+
 def generate_title_from_pdf(client, temp_pdf_path):
     file_object = client.files.create(file=Path(temp_pdf_path), purpose="file-extract")
     file_content = client.files.content(file_id=file_object.id).text
