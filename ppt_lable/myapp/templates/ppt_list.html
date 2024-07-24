@@ -77,7 +77,7 @@
                 if (currentPage === totalPages) {
                     setTimeout(() => {
                         progressText.innerText = '无任务';
-                    }, 3000);  // 3秒后显示无任务
+                    }, 3000);
                 }
             }
         }
@@ -89,7 +89,18 @@
 
         function startWebSocket() {
             showProgress();
-            socket = new WebSocket(`ws://${window.location.host}/ws/progress/${pptId}/`);
+
+            // 确定协议（http: 使用 ws:, https: 使用 wss:）
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            const wsUrl = `${protocol}//${host}/ws/progress/${pptId}/`;
+
+            console.log(`Connecting to ${wsUrl}`);
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function() {
+                console.log('WebSocket connection opened');
+            };
 
             socket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
@@ -98,7 +109,11 @@
             };
 
             socket.onclose = function(e) {
-                console.error('WebSocket closed unexpectedly');
+                console.log('WebSocket connection closed');
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
             };
         }
 
@@ -116,6 +131,7 @@
             fetch('/split_progress/')
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Initial progress data:', data); // Log the initial progress data
                     if (data.current_page || data.total_pages) {
                         updateProgress(data.ppt_name, data.current_page, data.total_pages);
                     } else {
@@ -308,7 +324,6 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        /* 新增的进度条样式 */
         #progressContainer {
             position: fixed;
             bottom: 20px;
@@ -434,7 +449,6 @@
         </div>
     </div>
 
-    <!-- Modals for Delete, Move, Edit, and Split Actions -->
     <div id="importModalOverlay" onclick="closeImportModal()"></div>
     <div id="importModal">
         <div class="modal-header">
@@ -552,7 +566,6 @@
         </form>
     </div>
 
-    <!-- 进度条 -->
     <div id="progressContainer">
         <button id="toggleButton" onclick="toggleProgressSize()">-</button>
         <div id="progressText">无任务</div>

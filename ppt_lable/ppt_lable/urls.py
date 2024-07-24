@@ -35,3 +35,4 @@ urlpatterns = [
     path('split_ppt/', split_ppt_view, name='split_ppt'),  # 新增拆分PPT的路径
     path('split_progress/', split_progress_view, name='split_progress'),
 ]
+ 

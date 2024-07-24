@@ -434,6 +434,7 @@ def split_ppt_view(request):
                     'message': progress_data
                 }
             )
+            print(f'Sent progress update: {progress_data}') # Add this line to log the progress update
 
             # 删除临时PDF文件
             os.remove(temp_pdf_path)
