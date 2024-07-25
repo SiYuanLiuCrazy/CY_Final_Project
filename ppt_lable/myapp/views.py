@@ -243,6 +243,10 @@ def import_ppt_view(request):
         target_folder = TyPptCatalog.objects.get(id=target_folder_id)
         target_path = target_folder.path
 
+        # 将标签转换为逗号分隔的字符串格式
+        lable_list = [label.strip() for label in lable.split(',')]
+        lable_str = ','.join(lable_list)
+
         fs = FileSystemStorage(location=target_path)
         filename = fs.save(ppt_file.name, ppt_file)
         file_path = fs.path(filename)
@@ -250,7 +254,7 @@ def import_ppt_view(request):
         ppt_main = TyPptMain.objects.create(
             id=uuid.uuid4(),
             title=title,
-            lable=lable,
+            lable=lable_str,  # 使用转换后的标签字符串
             catalog=target_folder.id,
             name=ppt_file.name,
             type=ppt_file.name.split('.')[-1],
@@ -260,6 +264,7 @@ def import_ppt_view(request):
 
         return redirect('ppt_list')
     return redirect('ppt_list')
+
 
 def get_catalog_tree(catalogs, parent=None, level=0):
     tree = []
@@ -348,12 +353,14 @@ def edit_ppt_view(request):
 
         # 更新数据库记录
         ppt.title = new_title
-        ppt.lable = new_label
+        ppt.lable = new_label  # 确保这里是正确的字段名，如果数据库字段名为`label`，请修改为`label`
         ppt.name = new_name
         ppt.path = new_path
         ppt.save()
 
         return redirect('catalog_detail', catalog_id=ppt.catalog)
+    else:
+        return redirect('ppt_list')
 
 
 def split_ppt_view(request):
@@ -471,7 +478,8 @@ def generate_title_from_pdf(client, temp_pdf_path):
             parsed_data = json.loads(title_and_lable)  
             title = parsed_data["name"]
             lables = parsed_data["tags"]
-            return title,lables
+            lables_str = ",".join(lables)
+            return title,lables_str
         except RateLimitError:
             if i < retries - 1:
                 time.sleep(2 ** (i + 1))
