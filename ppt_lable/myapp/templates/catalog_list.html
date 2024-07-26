@@ -14,15 +14,6 @@
             document.getElementById('subitemModalOverlay').style.display = 'none';
         }
 
-        function toggleChildren(id) {
-            var element = document.getElementById('children-' + id);
-            if (element.style.display === 'none') {
-                element.style.display = 'table-row-group';
-            } else {
-                element.style.display = 'none';
-            }
-        }
-
         function openMoveModal(catalogId) {
             document.getElementById('move_catalog_id').value = catalogId;
             document.getElementById('moveModal').style.display = 'block';
@@ -32,6 +23,18 @@
         function closeMoveModal() {
             document.getElementById('moveModal').style.display = 'none';
             document.getElementById('moveModalOverlay').style.display = 'none';
+        }
+
+        function openDeleteModal(catalogId) {
+            document.getElementById('delete_catalog_id').value = catalogId;
+            document.getElementById('deleteForm').action = `/delete_catalog/${catalogId}/`;
+            document.getElementById('deleteModal').style.display = 'block';
+            document.getElementById('deleteModalOverlay').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            document.getElementById('deleteModalOverlay').style.display = 'none';
         }
     </script>
     <style>
@@ -85,7 +88,7 @@
             background-color: #f1f1f1;
         }
 
-        #subitemModal, #moveModal {
+        #subitemModal, #moveModal, #deleteModal {
             display: none;
             position: fixed;
             top: 50%;
@@ -101,7 +104,7 @@
             max-width: 100%;
         }
 
-        #subitemModalOverlay, #moveModalOverlay {
+        #subitemModalOverlay, #moveModalOverlay, #deleteModalOverlay {
             display: none;
             position: fixed;
             top: 0;
@@ -175,20 +178,34 @@
         </tr>
         {% for catalog, indent in catalog_tree %}
             <tr>
-                <td>
-                    {{ indent|safe }}
-                    <a href="{% url 'catalog_detail' catalog.id %}" class="folder-link">{{ catalog.label }}</a>
-                </td>
+                <td>{{ indent|safe }}<a href="{% url 'catalog_detail' catalog.id %}" class="folder-link">{{ catalog.label }}</a></td>
                 <td>{{ catalog.path }}</td>
                 <td>
-                    <a href="{% url 'delete_catalog' catalog.id %}">删除</a>
-                    <a href="#" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
-                    <a href="{% url 'edit_catalog' catalog.id %}">编辑</a>
-                    <a href="#" onclick="openMoveModal('{{ catalog.id }}')">移动</a>
+                    <a href="#" class="action-link" onclick="openDeleteModal('{{ catalog.id }}')">删除</a>
+                    <a href="#" class="action-link" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
+                    <a href="{% url 'edit_catalog' catalog.id %}" class="action-link">编辑</a>
+                    <a href="#" class="action-link" onclick="openMoveModal('{{ catalog.id }}')">移动</a>
                 </td>
             </tr>
         {% endfor %}
     </table>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModalOverlay" onclick="closeDeleteModal()"></div>
+    <div id="deleteModal">
+        <div class="modal-header">
+            <h2>删除确认</h2>
+        </div>
+        <form method="POST" id="deleteForm">
+            {% csrf_token %}
+            <input type="hidden" id="delete_catalog_id" name="catalog_id">
+            <p>确认要删除该文件夹及其所有内容吗？此操作不可恢复。</p>
+            <div class="modal-footer">
+                <button type="button" class="cancel" onclick="closeDeleteModal()">取消</button>
+                <button type="submit">删除</button>
+            </div>
+        </form>
+    </div>
 
     <div id="subitemModalOverlay" onclick="closeSubitemModal()"></div>
     <div id="subitemModal">

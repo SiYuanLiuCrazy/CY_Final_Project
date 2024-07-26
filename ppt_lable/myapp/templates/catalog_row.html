@@ -1,27 +1,10 @@
 <tr>
-    <td>
-        {% if catalog.children.count > 0 %}
-            <a href="#" onclick="toggleChildren('{{ catalog.id }}')">
-                <span id="toggle-icon-{{ catalog.id }}">[+]</span>
-            </a>
-        {% endif %}
-        <a href="{% url 'catalog_detail' catalog.id %}" class="folder">
-            {{ catalog.label }}
-        </a>
-    </td>
+    <td>{{ indent|safe }}<a href="{% url 'catalog_detail' catalog.id %}" class="folder-link">{{ catalog.label }}</a></td>
     <td>{{ catalog.path }}</td>
     <td>
-        <a href="{% url 'delete_catalog' catalog.id %}" class="action-link">删除</a>
+        <a href="#" class="action-link" onclick="openDeleteModal('{{ catalog.id }}')">删除</a>
         <a href="#" class="action-link" onclick="openSubitemModal('{{ catalog.id }}')">增加子项</a>
         <a href="{% url 'edit_catalog' catalog.id %}" class="action-link">编辑</a>
         <a href="#" class="action-link" onclick="openMoveModal('{{ catalog.id }}')">移动</a>
     </td>
 </tr>
-{% if catalog.children.count > 0 %}
-    <tbody id="children-{{ catalog.id }}" style="display:none;">
-        {% for child in catalog.children.all %}
-            {% include 'catalog_row.html' with catalog=child %}
-        {% endfor %}
-    </tbody>
-{% endif %}
-
